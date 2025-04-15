@@ -5,7 +5,8 @@ namespace SendEmailExample.Services
 {
 	public interface IEmailService
 	{
-		Task SendEmail(string receptor, string subject, string body);
+		Task SendEmail(string receptor, string subject, string body, bool isBodyHtml = false);
+		string GetResetPasswordEmailBody(string resetLink);
 	}
 
 	public class EmailService : IEmailService
@@ -17,21 +18,39 @@ namespace SendEmailExample.Services
 			_configuration = configuration;
 		}
 
-		public async Task SendEmail(string receptor, string subject, string body)
+		public string GetResetPasswordEmailBody(string resetLink)
+		{
+			var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Templates", "ResetPasswordTemplate.html");
+			var body = File.ReadAllText(templatePath);
+			return body.Replace("{{resetLink}}", resetLink);
+		}
+
+		public async Task SendEmail(string receptor, string subject, string body, bool isBodyHtml = false)
 		{
 			var email = _configuration.GetValue<string>("EMAIL_CONFIGURATION:EMAIL");
 			var password = _configuration.GetValue<string>("EMAIL_CONFIGURATION:PASSWORD");
 			var host = _configuration.GetValue<string>("EMAIL_CONFIGURATION:HOST");
 			var port = _configuration.GetValue<int>("EMAIL_CONFIGURATION:PORT");
 
-			var smtpClient = new SmtpClient(host, port);
-			smtpClient.EnableSsl = true;
-			smtpClient.UseDefaultCredentials = false;
+			using var smtpClient = new SmtpClient(host, port)
+			{
+				EnableSsl = true, 
+				UseDefaultCredentials = false,
+				Credentials = new NetworkCredential(email, password),
+				DeliveryMethod = SmtpDeliveryMethod.Network
+			};
 
-			smtpClient.Credentials = new NetworkCredential(email, password);
+			var mailMessage = new MailMessage
+			{
+				From = new MailAddress(email),
+				Subject = subject,
+				Body = body,
+				IsBodyHtml = isBodyHtml
+			};
 
-			var message = new MailMessage(email!, receptor, subject, body);
-			await smtpClient.SendMailAsync(message);
+			mailMessage.To.Add(receptor);
+
+			await smtpClient.SendMailAsync(mailMessage);
 		}
 	}
 }
