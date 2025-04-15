@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using SendEmailExample.Models.Tables;
 using SendEmailExample.Services;
 
 namespace SendEmailExample.Controllers
@@ -21,14 +22,36 @@ namespace SendEmailExample.Controllers
 			return Ok("Mail Gönderildi");
 		}
 
+		//[HttpPost("reset-password")]
+		//public async Task<IActionResult> SendResetPasswordEmail([FromQuery] string email)
+		//{
+		//	string token = Guid.NewGuid().ToString();
+		//	string resetLink = $"https://niafix.com/reset-password?token={token}";
+
+		//	var htmlBody = ((EmailService)emailService).GetResetPasswordEmailBody(resetLink);
+
+		//	await emailService.SendEmail(email, "Şifre Sıfırlama", htmlBody, true);
+
+		//	return Ok("Şifre sıfırlama e-postası gönderildi.");
+		//}
+
 		[HttpPost("reset-password")]
-		public async Task<IActionResult> SendResetPasswordEmail([FromQuery] string email)
+		public async Task<IActionResult> SendResetPasswordEmail([FromQuery] string email, [FromServices] AppDbContext dbContext)
 		{
 			string token = Guid.NewGuid().ToString();
+			var resetRequest = new PasswordResetRequest
+			{
+				Email = email,
+				Token = token,
+				Expiration = DateTime.UtcNow.AddMinutes(15)
+			};
+
+			dbContext.PasswordResetRequests.Add(resetRequest);
+			await dbContext.SaveChangesAsync();
+
 			string resetLink = $"https://niafix.com/reset-password?token={token}";
 
 			var htmlBody = ((EmailService)emailService).GetResetPasswordEmailBody(resetLink);
-
 			await emailService.SendEmail(email, "Şifre Sıfırlama", htmlBody, true);
 
 			return Ok("Şifre sıfırlama e-postası gönderildi.");
