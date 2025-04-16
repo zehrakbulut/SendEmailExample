@@ -8,5 +8,6 @@ namespace SendEmailExample
 		public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 		
 		public DbSet<PasswordResetRequest> PasswordResetRequests { get; set; }
+		public DbSet<User> Users { get; set; }
 	}
 }

@@ -8,11 +8,13 @@ namespace SendEmailExample.Controllers
 	[ApiController]
 	public class EmailsController : ControllerBase
 	{
+		private readonly AppDbContext _context;
 		private readonly IEmailService emailService;
 
-		public EmailsController(IEmailService _emailService)
+		public EmailsController(IEmailService _emailService, AppDbContext context)
 		{
 			emailService = _emailService;
+			_context = context;
 		}
 
 		[HttpPost]
@@ -21,19 +23,6 @@ namespace SendEmailExample.Controllers
 			await emailService.SendEmail(receptor, subject, body,true);
 			return Ok("Mail Gönderildi");
 		}
-
-		//[HttpPost("reset-password")]
-		//public async Task<IActionResult> SendResetPasswordEmail([FromQuery] string email)
-		//{
-		//	string token = Guid.NewGuid().ToString();
-		//	string resetLink = $"https://niafix.com/reset-password?token={token}";
-
-		//	var htmlBody = ((EmailService)emailService).GetResetPasswordEmailBody(resetLink);
-
-		//	await emailService.SendEmail(email, "Şifre Sıfırlama", htmlBody, true);
-
-		//	return Ok("Şifre sıfırlama e-postası gönderildi.");
-		//}
 
 		[HttpPost("reset-password")]
 		public async Task<IActionResult> SendResetPasswordEmail([FromQuery] string email, [FromServices] AppDbContext dbContext)
@@ -49,7 +38,7 @@ namespace SendEmailExample.Controllers
 			dbContext.PasswordResetRequests.Add(resetRequest);
 			await dbContext.SaveChangesAsync();
 
-			string resetLink = $"https://niafix.com/reset-password?token={token}";
+			string resetLink = $"https://exercise.com/reset-password?token={token}";
 
 			var htmlBody = ((EmailService)emailService).GetResetPasswordEmailBody(resetLink);
 			await emailService.SendEmail(email, "Şifre Sıfırlama", htmlBody, true);
