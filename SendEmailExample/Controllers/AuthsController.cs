@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SendEmailExample.Dtos;
-using SendEmailExample.Models.Tables;
+using SendEmailExample.Services;
 
 namespace SendEmailExample.Controllers
 {
@@ -9,71 +8,52 @@ namespace SendEmailExample.Controllers
 	[ApiController]
 	public class AuthsController : ControllerBase
 	{
-		private readonly AppDbContext _context;
+		private readonly IAuthService _authService;
 
-		public AuthsController(AppDbContext context)
+		public AuthsController(IAuthService authService)
 		{
-			_context = context;
-		}
-
-		[HttpGet]
-		public async Task<IActionResult> GetAllAuth()
-		{
-			var requests = _context.Users.ToList();
-			return Ok(requests);
+			_authService = authService;
 		}
 
 		[HttpPost("register")]
 		public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
 		{
-			var existingUser = _context.Users.FirstOrDefault(u => u.Email == registerDto.Email);
-			if (existingUser != null)
-				return BadRequest("Bu email zaten kayıtlı");
+			var result = await _authService.RegisterAsync(registerDto);
+			if(!result.Success)
+				return BadRequest(result.Message);
 
-			//var hashedPassword = PasswordHasher.HashPassword(registerDto.Password);
-
-			var user = new User
-			{
-				Email = registerDto.Email,
-				//PasswordHash = hashedPassword
-				PasswordHash = registerDto.Password
-			};
-
-			_context.Users.Add(user);
-			await _context.SaveChangesAsync();
-			return Ok("Kayıt Başarılı..");
+			return Ok(result.Message);
 		}
 
 		[HttpPost("login")]
 		public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
 		{
-			var user = _context.Users.FirstOrDefault(u => u.Email == loginDto.Email);
-			if (user == null)
-				return BadRequest("Kullanıcı Bulunamadı");
+			var result = await _authService.LoginAsync(loginDto);
+			if (!result.Success)
+				return BadRequest(result.Message);
 
-
-			if (user.PasswordHash != loginDto.Password)
-				return BadRequest("Şifre Yanlış.");
-
-			return Ok("Giriş Başarılı :)");
+			return Ok(result.Message);
 		}
+
+		[HttpPost("forgot-password")]
+		public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+		{
+			var result = await _authService.SendPasswordResetEmailAsync(dto);
+			if (!result.Success)
+				return BadRequest(result.Message);
+
+			return Ok(result.Message);
+		}
+
 
 		[HttpPost("reset-password")]
 		public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
 		{
-			var resetRequest = await _context.PasswordResetRequests.FirstOrDefaultAsync(r => r.Token == resetPasswordDto.Token && !r.Used && r.Expiration > DateTime.UtcNow);
+			var result = await _authService.ResetPasswordAsync(resetPasswordDto);
+			if (!result.Success)
+				return BadRequest(result.Message);
 
-			if (resetRequest == null)
-				return BadRequest("Geçersiz veya süresi geçmiş token.");
-
-			var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == resetRequest.Email);
-			if (user == null)
-				return BadRequest("Kullanıcı bulunamadı.");
-
-			user.PasswordHash = resetPasswordDto.NewPassword;
-			resetRequest.Used = true;
-			await _context.SaveChangesAsync();
-			return Ok("Şifre başarıyla sıfırlandı.");
+			return Ok(result.Message);
 		}
 	}
 }

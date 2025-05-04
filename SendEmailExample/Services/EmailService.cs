@@ -3,12 +3,6 @@ using System.Net.Mail;
 
 namespace SendEmailExample.Services
 {
-	public interface IEmailService
-	{
-		Task SendEmail(string receptor, string subject, string body, bool isBodyHtml = false);
-		string GetResetPasswordEmailBody(string resetLink);
-	}
-
 	public class EmailService : IEmailService
 	{
 		private readonly IConfiguration _configuration;
